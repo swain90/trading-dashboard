@@ -1,4 +1,4 @@
-# Current Task: Phase 1 — Backend API
+# Completed: Phase 1 — Backend API
 
 ## Objective
 Build the FastAPI backend that reads all 3 bot SQLite databases and exposes a unified REST API. Deploy on the DigitalOcean droplet alongside the trading bots.
@@ -130,3 +130,7 @@ services:
 /sc:implement "Phase 1 per CURRENT_TASK.md" --tdd --persona-backend
 /sc:test --coverage
 ```
+# Current Task: Phase 2: React frontend with Tailwind dark theme.
+5 components: OverviewCards, PositionsTable, SignalFeed, TradeHistory, BotStatus.
+useApi hook polling every 30s. Color-coded bot badges (blue=equities, orange=futures, purple=crypto).
+Green/red P&L. Mobile-responsive. Vercel deploy config.
