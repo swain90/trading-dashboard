@@ -20,13 +20,40 @@ TODAY = NOW.strftime("%Y-%m-%d %H:%M:%S")
 YESTERDAY = (NOW - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
 OLD = (NOW - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
 
-SCHEMA_SIGNALS = """
+SCHEMA_SIGNALS_WW = """
 CREATE TABLE signals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    {ticker_col} TEXT NOT NULL,
-    direction TEXT,
-    score REAL,
     source TEXT,
+    ticker TEXT NOT NULL,
+    signal_type TEXT,
+    score REAL,
+    raw_data TEXT,
+    created_at DATETIME
+);
+"""
+
+SCHEMA_SIGNALS_CH = """
+CREATE TABLE signals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT,
+    symbol TEXT NOT NULL,
+    signal_type TEXT,
+    score REAL,
+    confidence REAL,
+    raw_data TEXT,
+    created_at DATETIME,
+    expires_at DATETIME
+);
+"""
+
+SCHEMA_SIGNALS_CRYPTO = """
+CREATE TABLE signals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT,
+    symbol TEXT NOT NULL,
+    signal_type TEXT,
+    score REAL,
+    raw_data TEXT,
     created_at DATETIME
 );
 """
@@ -62,15 +89,15 @@ CREATE TABLE positions (
 """
 
 
-def _create_db(path: str, ticker_col: str, seed: dict) -> None:
+def _create_db(path: str, ticker_col: str, seed: dict, signals_ddl: str) -> None:
     conn = sqlite3.connect(path)
-    conn.execute(SCHEMA_SIGNALS.format(ticker_col=ticker_col))
+    conn.execute(signals_ddl)
     conn.execute(SCHEMA_TRADES.format(ticker_col=ticker_col))
     conn.execute(SCHEMA_POSITIONS.format(ticker_col=ticker_col))
 
     for sig in seed.get("signals", []):
         conn.execute(
-            f"INSERT INTO signals ({ticker_col}, direction, score, source, created_at) "
+            f"INSERT INTO signals ({ticker_col}, signal_type, score, source, created_at) "
             f"VALUES (?, ?, ?, ?, ?)",
             sig,
         )
@@ -100,7 +127,7 @@ def tmp_dbs(tmp_path):
     ch_path = str(tmp_path / "commodity.db")
     crypto_path = str(tmp_path / "crypto.db")
 
-    # Whale Watcher — uses "ticker"
+    # Whale Watcher — uses "ticker" and "signal_type"
     _create_db(
         ww_path,
         "ticker",
@@ -117,9 +144,10 @@ def tmp_dbs(tmp_path):
                 ("NVDA", "LONG", 50, 450.00, 460.00, 500.00, 440.00, 480.00, TODAY),
             ],
         },
+        signals_ddl=SCHEMA_SIGNALS_WW,
     )
 
-    # Commodity Hunter — uses "symbol"
+    # Commodity Hunter — uses "symbol" and "signal_type", has confidence + expires_at
     _create_db(
         ch_path,
         "symbol",
@@ -134,9 +162,10 @@ def tmp_dbs(tmp_path):
                 ("MNQ", "SHORT", 1, 18500.00, 18450.00, 50.00, 18600.00, 18300.00, TODAY),
             ],
         },
+        signals_ddl=SCHEMA_SIGNALS_CH,
     )
 
-    # Crypto — uses "symbol"
+    # Crypto — uses "symbol" and "signal_type"
     _create_db(
         crypto_path,
         "symbol",
@@ -150,6 +179,7 @@ def tmp_dbs(tmp_path):
             ],
             "positions": [],
         },
+        signals_ddl=SCHEMA_SIGNALS_CRYPTO,
     )
 
     return {"ww": ww_path, "ch": ch_path, "crypto": crypto_path}

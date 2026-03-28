@@ -16,7 +16,6 @@ async def get_overview() -> OverviewResponse:
 
     for bot_id in db.settings.bots:
         cfg = db.bot_config(bot_id)
-        col = db.symbol_col(bot_id)
 
         # Today's closed trade P&L
         row = await db.fetch_one(

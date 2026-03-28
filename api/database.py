@@ -14,6 +14,41 @@ logger = logging.getLogger(__name__)
 # Active connections keyed by bot_id
 _connections: dict[str, aiosqlite.Connection] = {}
 
+# Schema cache: _schemas[bot_id][table_name] = set of column names
+_schemas: dict[str, dict[str, set[str]]] = {}
+
+# Column aliases: maps (normalized_name) -> list of possible actual column names
+# First match wins when introspecting a table
+COLUMN_ALIASES: dict[str, list[str]] = {
+    "symbol": ["symbol", "ticker"],
+    "direction": ["direction", "signal_type"],
+}
+
+
+async def _introspect(bot_id: str, conn: aiosqlite.Connection) -> None:
+    """Read PRAGMA table_info() for all tables and cache column names."""
+    tables_schema: dict[str, set[str]] = {}
+    try:
+        async with conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ) as cur:
+            tables = [row[0] for row in await cur.fetchall()]
+
+        for table in tables:
+            async with conn.execute(f"PRAGMA table_info({table})") as cur:
+                cols = {row[1] for row in await cur.fetchall()}
+            tables_schema[table] = cols
+
+        _schemas[bot_id] = tables_schema
+        logger.info(
+            "Introspected %s: %s",
+            bot_id,
+            {t: sorted(c) for t, c in tables_schema.items()},
+        )
+    except Exception:
+        logger.exception("Schema introspection failed for %s", bot_id)
+        _schemas[bot_id] = {}
+
 
 async def open_all() -> None:
     """Open read-only connections to all configured bot databases."""
@@ -23,6 +58,7 @@ async def open_all() -> None:
             conn = await aiosqlite.connect(uri, uri=True)
             conn.row_factory = aiosqlite.Row
             _connections[bot_id] = conn
+            await _introspect(bot_id, conn)
             logger.info("Connected to %s (%s)", bot.name, bot.db_path)
         except Exception:
             logger.warning("Could not connect to %s (%s)", bot.name, bot.db_path)
@@ -36,6 +72,7 @@ async def close_all() -> None:
         except Exception:
             logger.warning("Error closing connection for %s", bot_id)
     _connections.clear()
+    _schemas.clear()
 
 
 def get_connection(bot_id: str) -> aiosqlite.Connection | None:
@@ -56,6 +93,38 @@ def bot_config(bot_id: str) -> BotConfig:
 def symbol_col(bot_id: str) -> str:
     """Return the ticker/symbol column name for a bot's SQL queries."""
     return settings.bots[bot_id].ticker_field
+
+
+def col(bot_id: str, table: str, normalized_name: str) -> str:
+    """Return a SQL fragment that selects the actual column aliased to normalized_name.
+
+    Uses PRAGMA-introspected schema to find which actual column exists.
+    Falls back to NULL if no matching column is found.
+
+    Examples:
+        col("whale_watcher", "signals", "symbol")  -> "ticker AS symbol"
+        col("commodity_hunter", "signals", "direction")  -> "signal_type AS direction"
+        col("crypto", "signals", "direction")  -> "direction"
+    """
+    actual_cols = _schemas.get(bot_id, {}).get(table, set())
+
+    # Check alias list first
+    candidates = COLUMN_ALIASES.get(normalized_name, [normalized_name])
+    for candidate in candidates:
+        if candidate in actual_cols:
+            if candidate == normalized_name:
+                return normalized_name
+            return f"{candidate} AS {normalized_name}"
+
+    # Column doesn't exist in this table — return NULL
+    return f"NULL AS {normalized_name}"
+
+
+def has_col(bot_id: str, table: str, normalized_name: str) -> bool:
+    """Check if a table has a column (or any alias for it)."""
+    actual_cols = _schemas.get(bot_id, {}).get(table, set())
+    candidates = COLUMN_ALIASES.get(normalized_name, [normalized_name])
+    return any(c in actual_cols for c in candidates)
 
 
 async def fetch_all(bot_id: str, sql: str, params: tuple = ()) -> list[dict]:

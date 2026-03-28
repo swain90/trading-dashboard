@@ -21,11 +21,12 @@ async def get_signals(
 
     for bot_id in bot_ids:
         cfg = db.bot_config(bot_id)
-        col = db.symbol_col(bot_id)
+        sym = db.col(bot_id, "signals", "symbol")
+        dir_ = db.col(bot_id, "signals", "direction")
 
         rows = await db.fetch_all(
             bot_id,
-            f"SELECT id, {col} AS symbol, direction, score, source, created_at "
+            f"SELECT id, {sym}, {dir_}, score, source, created_at "
             f"FROM signals ORDER BY created_at DESC LIMIT ?",
             (limit,),
         )

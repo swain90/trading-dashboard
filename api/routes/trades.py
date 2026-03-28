@@ -21,11 +21,11 @@ async def get_trades(
 
     for bot_id in bot_ids:
         cfg = db.bot_config(bot_id)
-        col = db.symbol_col(bot_id)
+        sym = db.col(bot_id, "trades", "symbol")
 
         rows = await db.fetch_all(
             bot_id,
-            f"SELECT id, {col} AS symbol, side, quantity, entry_price, "
+            f"SELECT id, {sym}, side, quantity, entry_price, "
             f"exit_price, pnl, opened_at, closed_at "
             f"FROM trades "
             f"WHERE closed_at >= datetime('now', '-' || ? || ' days') "

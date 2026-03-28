@@ -20,11 +20,11 @@ async def get_positions(
 
     for bot_id in bot_ids:
         cfg = db.bot_config(bot_id)
-        col = db.symbol_col(bot_id)
+        sym = db.col(bot_id, "positions", "symbol")
 
         rows = await db.fetch_all(
             bot_id,
-            f"SELECT id, {col} AS symbol, side, size, entry_price, "
+            f"SELECT id, {sym}, side, size, entry_price, "
             f"current_price, unrealized_pnl, stop_loss, take_profit, opened_at "
             f"FROM positions ORDER BY opened_at DESC",
         )
