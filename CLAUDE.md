@@ -74,14 +74,18 @@ web/
 - All timestamps displayed in user's local timezone (convert from UTC)
 
 ## Database Mapping
-All 3 bots use SQLAlchemy 2.0 with nearly identical schemas:
+Bots use SQLAlchemy 2.0 with varying schemas. The API normalizes all to a unified format:
 | Bot | DB Path | Signal table | Trade table | Position table |
 |-----|---------|-------------|-------------|----------------|
-| Whale Watcher | /data/trading.db | signals (ticker) | trades | positions |
-| Commodity Hunter | /data/commodity.db | signals (symbol) | trades | positions |
-| Crypto | /data/crypto.db | signals (symbol) | trades | positions |
+| Whale Watcher | /data/ww/trading.db | signals (ticker) | trades | positions |
+| Commodity Hunter | /data/ch/commodity.db | signals (symbol) | trades | positions |
+| Crypto | /data/crypto/crypto.db | signals (symbol) | trades | positions |
+| Forecast Maker | /data/fm/forecast_maker.db | quotes (symbol, side) | fills (filled_at) | inventory (quantity, avg_cost) |
 
-Note: WW uses "ticker", the other two use "symbol". API normalizes to "symbol".
+Note: WW uses "ticker", others use "symbol". FM has a completely different schema:
+- quotes→signals, fills→trades, inventory→positions (table_map in BotConfig)
+- P&L from daily_pnl table, status from bot_state table
+- Column aliases: side→direction, quantity→size, avg_cost→entry_price, filled_at→closed_at
 
 ## SuperClaude Integration
 Preferred workflow: /sc:design → /sc:implement --tdd → /sc:test

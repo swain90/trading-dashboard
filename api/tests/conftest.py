@@ -89,6 +89,117 @@ CREATE TABLE positions (
 """
 
 
+SCHEMA_FM_QUOTES = """
+CREATE TABLE quotes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    con_id TEXT,
+    symbol TEXT NOT NULL,
+    strike REAL,
+    expiry TEXT,
+    side TEXT,
+    price REAL,
+    quantity INTEGER,
+    order_id TEXT,
+    status TEXT,
+    created_at DATETIME,
+    updated_at DATETIME
+);
+"""
+
+SCHEMA_FM_FILLS = """
+CREATE TABLE fills (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    execution_id TEXT,
+    con_id TEXT,
+    symbol TEXT NOT NULL,
+    strike REAL,
+    expiry TEXT,
+    side TEXT,
+    price REAL,
+    quantity INTEGER,
+    execution_type TEXT,
+    filled_at DATETIME
+);
+"""
+
+SCHEMA_FM_INVENTORY = """
+CREATE TABLE inventory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    strike REAL,
+    expiry TEXT,
+    side TEXT,
+    quantity INTEGER,
+    avg_cost REAL,
+    current_value REAL,
+    updated_at DATETIME
+);
+"""
+
+SCHEMA_FM_DAILY_PNL = """
+CREATE TABLE daily_pnl (
+    date TEXT PRIMARY KEY,
+    spread_pnl REAL,
+    inventory_pnl REAL,
+    coupon_income REAL,
+    total_pnl REAL,
+    num_pairs INTEGER,
+    num_quotes INTEGER,
+    fill_rate REAL
+);
+"""
+
+SCHEMA_FM_BOT_STATE = """
+CREATE TABLE bot_state (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at DATETIME
+);
+"""
+
+
+def _create_fm_db(path: str, seed: dict) -> None:
+    conn = sqlite3.connect(path)
+    conn.execute(SCHEMA_FM_QUOTES)
+    conn.execute(SCHEMA_FM_FILLS)
+    conn.execute(SCHEMA_FM_INVENTORY)
+    conn.execute(SCHEMA_FM_DAILY_PNL)
+    conn.execute(SCHEMA_FM_BOT_STATE)
+
+    for q in seed.get("quotes", []):
+        conn.execute(
+            "INSERT INTO quotes (symbol, strike, expiry, side, price, quantity, status, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            q,
+        )
+    for f in seed.get("fills", []):
+        conn.execute(
+            "INSERT INTO fills (symbol, strike, expiry, side, price, quantity, filled_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            f,
+        )
+    for inv in seed.get("inventory", []):
+        conn.execute(
+            "INSERT INTO inventory (symbol, strike, expiry, side, quantity, avg_cost, current_value, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            inv,
+        )
+    for pnl in seed.get("daily_pnl", []):
+        conn.execute(
+            "INSERT INTO daily_pnl (date, spread_pnl, inventory_pnl, coupon_income, total_pnl, num_pairs, num_quotes, fill_rate) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            pnl,
+        )
+    for state in seed.get("bot_state", []):
+        conn.execute(
+            "INSERT INTO bot_state (key, value, updated_at) VALUES (?, ?, ?)",
+            state,
+        )
+
+    conn.commit()
+    conn.close()
+
+
 def _create_db(path: str, ticker_col: str, seed: dict, signals_ddl: str) -> None:
     conn = sqlite3.connect(path)
     conn.execute(signals_ddl)
@@ -182,7 +293,37 @@ def tmp_dbs(tmp_path):
         signals_ddl=SCHEMA_SIGNALS_CRYPTO,
     )
 
-    return {"ww": ww_path, "ch": ch_path, "crypto": crypto_path}
+    # Forecast Maker — prediction markets, different schema entirely
+    fm_path = str(tmp_path / "forecast_maker.db")
+    today_str = NOW.strftime("%Y-%m-%d")
+    yesterday_str = (NOW - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    _create_fm_db(
+        fm_path,
+        {
+            "quotes": [
+                ("TRUMP.WIN", 0.55, "2026-11-03", "BUY", 0.52, 100, "filled", TODAY),
+                ("FED.HIKE", 0.30, "2026-06-15", "SELL", 0.32, 50, "open", TODAY),
+                ("GDP.3PCT", 0.45, "2026-09-30", "BUY", 0.44, 200, "filled", YESTERDAY),
+            ],
+            "fills": [
+                ("TRUMP.WIN", 0.55, "2026-11-03", "BUY", 0.52, 100, TODAY),
+                ("GDP.3PCT", 0.45, "2026-09-30", "BUY", 0.44, 200, YESTERDAY),
+            ],
+            "inventory": [
+                ("TRUMP.WIN", 0.55, "2026-11-03", "LONG", 100, 0.52, 55.0, TODAY),
+            ],
+            "daily_pnl": [
+                (today_str, 12.50, 3.00, 1.50, 17.00, 5, 20, 0.35),
+                (yesterday_str, 8.00, -2.00, 1.50, 7.50, 4, 15, 0.30),
+            ],
+            "bot_state": [
+                ("status", "running", TODAY),
+            ],
+        },
+    )
+
+    return {"ww": ww_path, "ch": ch_path, "crypto": crypto_path, "fm": fm_path}
 
 
 @pytest.fixture()
@@ -191,6 +332,7 @@ def _configure_env(tmp_dbs):
     os.environ["WW_DB_PATH"] = tmp_dbs["ww"]
     os.environ["CH_DB_PATH"] = tmp_dbs["ch"]
     os.environ["CRYPTO_DB_PATH"] = tmp_dbs["crypto"]
+    os.environ["FM_DB_PATH"] = tmp_dbs["fm"]
     os.environ["DASHBOARD_API_KEY"] = "test-key-123"
     os.environ["CORS_ORIGINS"] = "http://localhost:5173"
 
@@ -209,6 +351,7 @@ def _configure_env(tmp_dbs):
     os.environ.pop("WW_DB_PATH", None)
     os.environ.pop("CH_DB_PATH", None)
     os.environ.pop("CRYPTO_DB_PATH", None)
+    os.environ.pop("FM_DB_PATH", None)
     os.environ.pop("DASHBOARD_API_KEY", None)
 
 

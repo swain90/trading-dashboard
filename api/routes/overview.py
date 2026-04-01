@@ -16,51 +16,74 @@ async def get_overview() -> OverviewResponse:
 
     for bot_id in db.settings.bots:
         cfg = db.bot_config(bot_id)
+        sig_table = cfg.table("signals")
+        pos_table = cfg.table("positions")
 
-        # Today's closed trade P&L
-        row = await db.fetch_one(
-            bot_id,
-            "SELECT COALESCE(SUM(pnl), 0) as today_pnl "
-            "FROM trades WHERE date(closed_at) = date('now') AND pnl IS NOT NULL",
-        )
-        closed_pnl = row["today_pnl"] if row else 0.0
+        if db.has_table(bot_id, "daily_pnl"):
+            # Forecast Maker: P&L from daily_pnl table
+            row = await db.fetch_one(
+                bot_id,
+                "SELECT COALESCE(total_pnl, 0) as today_pnl "
+                "FROM daily_pnl WHERE date = date('now')",
+            )
+            today_pnl = row["today_pnl"] if row else 0.0
 
-        # Unrealized P&L from open positions
-        row = await db.fetch_one(
-            bot_id,
-            "SELECT COALESCE(SUM(unrealized_pnl), 0) as urpnl FROM positions",
-        )
-        unrealized = row["urpnl"] if row else 0.0
+            row = await db.fetch_one(
+                bot_id,
+                "SELECT COALESCE(SUM(total_pnl), 0) as equity FROM daily_pnl",
+            )
+            equity = row["equity"] if row else 0.0
+        else:
+            # Standard bots: P&L from trades + positions
+            row = await db.fetch_one(
+                bot_id,
+                "SELECT COALESCE(SUM(pnl), 0) as today_pnl "
+                "FROM trades WHERE date(closed_at) = date('now') AND pnl IS NOT NULL",
+            )
+            closed_pnl = row["today_pnl"] if row else 0.0
 
-        today_pnl = closed_pnl + unrealized
+            row = await db.fetch_one(
+                bot_id,
+                f"SELECT COALESCE(SUM(unrealized_pnl), 0) as urpnl FROM {pos_table}",
+            )
+            unrealized = row["urpnl"] if row else 0.0
 
-        # Total equity: sum of all closed trade P&L (lifetime)
-        row = await db.fetch_one(
-            bot_id,
-            "SELECT COALESCE(SUM(pnl), 0) as equity "
-            "FROM trades WHERE pnl IS NOT NULL",
-        )
-        equity = row["equity"] if row else 0.0
+            today_pnl = closed_pnl + unrealized
+
+            row = await db.fetch_one(
+                bot_id,
+                "SELECT COALESCE(SUM(pnl), 0) as equity "
+                "FROM trades WHERE pnl IS NOT NULL",
+            )
+            equity = row["equity"] if row else 0.0
 
         # Open positions count
-        row = await db.fetch_one(bot_id, "SELECT COUNT(*) as cnt FROM positions")
+        row = await db.fetch_one(
+            bot_id, f"SELECT COUNT(*) as cnt FROM {pos_table}",
+        )
         open_pos = row["cnt"] if row else 0
 
         # Signals today
         row = await db.fetch_one(
             bot_id,
-            "SELECT COUNT(*) as cnt FROM signals WHERE date(created_at) = date('now')",
+            f"SELECT COUNT(*) as cnt FROM {sig_table} "
+            f"WHERE date(created_at) = date('now')",
         )
         signals_today = row["cnt"] if row else 0
 
         # Last signal time
         row = await db.fetch_one(
             bot_id,
-            "SELECT created_at FROM signals ORDER BY created_at DESC LIMIT 1",
+            f"SELECT created_at FROM {sig_table} ORDER BY created_at DESC LIMIT 1",
         )
         last_signal = row["created_at"] if row else None
 
-        status = db.bot_status(bot_id, last_signal)
+        # Bot status
+        if db.has_table(bot_id, "bot_state"):
+            status = await db.bot_state_status(bot_id)
+        else:
+            status = db.bot_status(bot_id, last_signal)
+
         today_pnl_pct = (today_pnl / equity * 100) if equity else 0.0
 
         bots.append(

@@ -8,17 +8,18 @@ async def test_trades_returns_recent(client):
     resp = await client.get("/api/trades?days=7")
     assert resp.status_code == 200
     data = resp.json()
-    # WW: 1 closed today, CH: 1 closed today, Crypto: 1 closed today = 3
-    # WW old trade is 30 days ago, outside 7-day window
-    assert data["count"] == 3
+    # WW: 1 closed today, CH: 1 closed today, Crypto: 1 closed today, FM: 1 filled today = 4
+    # WW old trade is 30 days ago, outside 7-day window; FM fill from yesterday also in window = 5
+    assert data["count"] == 5
 
 
 @pytest.mark.asyncio
 async def test_trades_stats(client):
     resp = await client.get("/api/trades?days=7")
     stats = resp.json()["stats"]
+    # FM fills have no pnl field (NULL), so only 3 trades with pnl data
     assert stats["total_trades"] == 3
-    assert stats["wins"] == 3  # all 3 recent trades are profitable
+    assert stats["wins"] == 3
     assert stats["win_rate"] == 100.0
     assert stats["total_pnl"] > 0
 
@@ -38,6 +39,22 @@ async def test_trades_stats_empty(client):
     stats = resp.json()["stats"]
     # Crypto trade was closed TODAY so should still be in 1-day window
     assert stats["total_trades"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_trades_forecast_maker_fills(client):
+    """Forecast Maker maps fills table to trades endpoint."""
+    resp = await client.get("/api/trades?days=7&bot=forecast_maker")
+    data = resp.json()
+    assert data["count"] == 2
+    symbols = {t["symbol"] for t in data["trades"]}
+    assert "TRUMP.WIN" in symbols
+    assert "GDP.3PCT" in symbols
+    # FM fills use 'price' mapped to 'entry_price', no exit_price or pnl
+    fill = next(t for t in data["trades"] if t["symbol"] == "TRUMP.WIN")
+    assert fill["entry_price"] == 0.52
+    assert fill["pnl"] is None
+    assert fill["exit_price"] is None
 
 
 @pytest.mark.asyncio

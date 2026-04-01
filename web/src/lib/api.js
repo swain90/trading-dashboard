@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8090";
+const API_URL = 'https://types-rose-gains-eyed.trycloudflare.com';
 const API_KEY = import.meta.env.VITE_API_KEY || "";
 
 async function request(path, params = {}) {

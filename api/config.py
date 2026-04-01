@@ -12,6 +12,14 @@ class BotConfig:
     db_path: str
     asset_class: str
     ticker_field: str  # "ticker" for WW, "symbol" for others
+    table_map: tuple[tuple[str, str], ...] = ()  # logical→actual table overrides
+
+    def table(self, logical: str) -> str:
+        """Resolve a logical table name (signals/trades/positions) to actual."""
+        for k, v in self.table_map:
+            if k == logical:
+                return v
+        return logical
 
 
 @dataclass
@@ -47,6 +55,17 @@ class Settings:
                     db_path=os.getenv("CRYPTO_DB_PATH", "/data/crypto/crypto.db"),
                     asset_class="crypto",
                     ticker_field="symbol",
+                ),
+                "forecast_maker": BotConfig(
+                    name="Forecast Maker",
+                    db_path=os.getenv("FM_DB_PATH", "/data/fm/forecast_maker.db"),
+                    asset_class="predictions",
+                    ticker_field="symbol",
+                    table_map=(
+                        ("signals", "quotes"),
+                        ("trades", "fills"),
+                        ("positions", "inventory"),
+                    ),
                 ),
             },
         )

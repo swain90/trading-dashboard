@@ -21,7 +21,10 @@ _schemas: dict[str, dict[str, set[str]]] = {}
 # First match wins when introspecting a table
 COLUMN_ALIASES: dict[str, list[str]] = {
     "symbol": ["symbol", "ticker"],
-    "direction": ["direction", "signal_type"],
+    "direction": ["direction", "signal_type", "side"],
+    "size": ["size", "quantity"],
+    "entry_price": ["entry_price", "avg_cost", "price"],
+    "closed_at": ["closed_at", "filled_at"],
 }
 
 
@@ -95,6 +98,11 @@ def symbol_col(bot_id: str) -> str:
     return settings.bots[bot_id].ticker_field
 
 
+def table_name(bot_id: str, logical: str) -> str:
+    """Resolve a logical table name to the actual table name for a bot."""
+    return settings.bots[bot_id].table(logical)
+
+
 def col(bot_id: str, table: str, normalized_name: str) -> str:
     """Return a SQL fragment that selects the actual column aliased to normalized_name.
 
@@ -118,6 +126,16 @@ def col(bot_id: str, table: str, normalized_name: str) -> str:
 
     # Column doesn't exist in this table — return NULL
     return f"NULL AS {normalized_name}"
+
+
+def raw_col(bot_id: str, table: str, normalized_name: str) -> str | None:
+    """Return the actual column name for a normalized name, or None if missing."""
+    actual_cols = _schemas.get(bot_id, {}).get(table, set())
+    candidates = COLUMN_ALIASES.get(normalized_name, [normalized_name])
+    for candidate in candidates:
+        if candidate in actual_cols:
+            return candidate
+    return None
 
 
 def has_col(bot_id: str, table: str, normalized_name: str) -> bool:
@@ -155,6 +173,11 @@ async def fetch_one(bot_id: str, sql: str, params: tuple = ()) -> dict | None:
         return None
 
 
+def has_table(bot_id: str, table: str) -> bool:
+    """Check if a bot's database has a specific table."""
+    return table in _schemas.get(bot_id, {})
+
+
 def bot_status(bot_id: str, last_signal_time: str | None) -> str:
     """Determine bot status based on DB connection and last signal time."""
     if get_connection(bot_id) is None:
@@ -168,4 +191,19 @@ def bot_status(bot_id: str, last_signal_time: str | None) -> str:
             return "running"
     except (ValueError, TypeError):
         pass
+    return "stopped"
+
+
+async def bot_state_status(bot_id: str) -> str:
+    """Get bot status from bot_state table (Forecast Maker). Falls back to 'stopped'."""
+    if get_connection(bot_id) is None:
+        return "unavailable"
+    if not has_table(bot_id, "bot_state"):
+        return "stopped"
+    row = await fetch_one(
+        bot_id,
+        "SELECT value FROM bot_state WHERE key = 'status'",
+    )
+    if row and row["value"]:
+        return row["value"]
     return "stopped"

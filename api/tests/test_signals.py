@@ -8,8 +8,8 @@ async def test_signals_returns_recent(client):
     resp = await client.get("/api/signals")
     assert resp.status_code == 200
     data = resp.json()
-    # WW: 2 signals, CH: 1, Crypto: 2 = 5 total
-    assert data["count"] == 5
+    # WW: 2 signals, CH: 1, Crypto: 2, FM: 3 quotes = 8 total
+    assert data["count"] == 8
 
 
 @pytest.mark.asyncio
@@ -70,10 +70,25 @@ async def test_signals_schema_mapping_ww_ticker_and_signal_type(client):
 
 
 @pytest.mark.asyncio
-async def test_signals_all_bots_use_signal_type(client):
-    """All 3 bots use signal_type — all should map to 'direction' in API response."""
+async def test_signals_all_bots_have_direction(client):
+    """All bots should map their direction-like field to 'direction' in API response."""
     resp = await client.get("/api/signals")
     for sig in resp.json()["signals"]:
-        assert sig["direction"] in ("LONG", "SHORT"), (
+        assert sig["direction"] in ("LONG", "SHORT", "BUY", "SELL"), (
             f"Bot {sig['bot_id']} signal {sig['id']} has direction={sig['direction']!r}"
         )
+
+
+@pytest.mark.asyncio
+async def test_signals_forecast_maker_quotes_as_signals(client):
+    """Forecast Maker maps quotes table to signals endpoint."""
+    resp = await client.get("/api/signals?bot=forecast_maker")
+    data = resp.json()
+    assert data["count"] == 3
+    symbols = {s["symbol"] for s in data["signals"]}
+    assert "TRUMP.WIN" in symbols
+    assert "FED.HIKE" in symbols
+    # FM uses 'side' mapped to 'direction'
+    directions = {s["direction"] for s in data["signals"]}
+    assert "BUY" in directions
+    assert "SELL" in directions

@@ -21,16 +21,25 @@ async def get_trades(
 
     for bot_id in bot_ids:
         cfg = db.bot_config(bot_id)
-        sym = db.col(bot_id, "trades", "symbol")
+        table = cfg.table("trades")
+        sym = db.col(bot_id, table, "symbol")
+        ep = db.col(bot_id, table, "entry_price")
+        ca = db.col(bot_id, table, "closed_at")
+        # Actual column name for WHERE clause (no alias)
+        ts_col = db.raw_col(bot_id, table, "closed_at") or "closed_at"
+
+        exit_p = db.col(bot_id, table, "exit_price")
+        pnl_col = db.col(bot_id, table, "pnl")
+        opened = db.col(bot_id, table, "opened_at")
 
         rows = await db.fetch_all(
             bot_id,
-            f"SELECT id, {sym}, side, quantity, entry_price, "
-            f"exit_price, pnl, opened_at, closed_at "
-            f"FROM trades "
-            f"WHERE closed_at >= datetime('now', '-' || ? || ' days') "
-            f"AND closed_at IS NOT NULL "
-            f"ORDER BY closed_at DESC",
+            f"SELECT id, {sym}, side, quantity, {ep}, "
+            f"{exit_p}, {pnl_col}, {opened}, {ca} "
+            f"FROM {table} "
+            f"WHERE {ts_col} >= datetime('now', '-' || ? || ' days') "
+            f"AND {ts_col} IS NOT NULL "
+            f"ORDER BY {ts_col} DESC",
             (str(days),),
         )
 

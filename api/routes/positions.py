@@ -20,13 +20,23 @@ async def get_positions(
 
     for bot_id in bot_ids:
         cfg = db.bot_config(bot_id)
-        sym = db.col(bot_id, "positions", "symbol")
+        table = cfg.table("positions")
+        sym = db.col(bot_id, table, "symbol")
+        sz = db.col(bot_id, table, "size")
+        ep = db.col(bot_id, table, "entry_price")
+
+        cp = db.col(bot_id, table, "current_price")
+        urpnl = db.col(bot_id, table, "unrealized_pnl")
+        sl = db.col(bot_id, table, "stop_loss")
+        tp = db.col(bot_id, table, "take_profit")
+        opened = db.col(bot_id, table, "opened_at")
 
         rows = await db.fetch_all(
             bot_id,
-            f"SELECT id, {sym}, side, size, entry_price, "
-            f"current_price, unrealized_pnl, stop_loss, take_profit, opened_at "
-            f"FROM positions ORDER BY opened_at DESC",
+            f"SELECT id, {sym}, side, {sz}, {ep}, "
+            f"{cp}, {urpnl}, {sl}, {tp}, {opened} "
+            f"FROM {table} ORDER BY "
+            f"{db.raw_col(bot_id, table, 'opened_at') or 'id'} DESC",
         )
 
         for r in rows:
@@ -47,6 +57,9 @@ async def get_positions(
                 )
             )
 
-    positions.sort(key=lambda p: p.opened_at or "", reverse=True)
+    positions.sort(
+        key=lambda p: p.opened_at.isoformat() if p.opened_at else "",
+        reverse=True,
+    )
 
     return PositionsResponse(positions=positions, count=len(positions))

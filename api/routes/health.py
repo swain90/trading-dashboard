@@ -17,6 +17,9 @@ async def get_health() -> HealthResponse:
     for bot_id in db.settings.bots:
         cfg = db.bot_config(bot_id)
         connected = db.get_connection(bot_id) is not None
+        sig_table = cfg.table("signals")
+        pos_table = cfg.table("positions")
+        trade_table = cfg.table("trades")
 
         last_signal = None
         open_positions = 0
@@ -25,23 +28,27 @@ async def get_health() -> HealthResponse:
         if connected:
             row = await db.fetch_one(
                 bot_id,
-                "SELECT created_at FROM signals ORDER BY created_at DESC LIMIT 1",
+                f"SELECT created_at FROM {sig_table} ORDER BY created_at DESC LIMIT 1",
             )
             last_signal = row["created_at"] if row else None
 
             row = await db.fetch_one(
-                bot_id, "SELECT COUNT(*) as cnt FROM positions"
+                bot_id, f"SELECT COUNT(*) as cnt FROM {pos_table}",
             )
             open_positions = row["cnt"] if row else 0
 
+            ts_col = db.raw_col(bot_id, trade_table, "closed_at") or "closed_at"
             row = await db.fetch_one(
                 bot_id,
-                "SELECT COUNT(*) as cnt FROM trades "
-                "WHERE date(closed_at) = date('now')",
+                f"SELECT COUNT(*) as cnt FROM {trade_table} "
+                f"WHERE date({ts_col}) = date('now')",
             )
             trades_today = row["cnt"] if row else 0
 
-        status = db.bot_status(bot_id, last_signal)
+        if db.has_table(bot_id, "bot_state"):
+            status = await db.bot_state_status(bot_id)
+        else:
+            status = db.bot_status(bot_id, last_signal)
 
         bots.append(
             BotHealth(

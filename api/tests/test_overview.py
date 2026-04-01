@@ -10,7 +10,7 @@ async def test_overview_returns_all_bots(client):
     data = resp.json()
     assert "combined" in data
     assert "bots" in data
-    assert len(data["bots"]) == 3
+    assert len(data["bots"]) == 4
 
 
 @pytest.mark.asyncio
@@ -36,6 +36,21 @@ async def test_overview_bot_fields(client):
     ]
     for field in required_fields:
         assert field in bot, f"Missing field: {field}"
+
+
+@pytest.mark.asyncio
+async def test_overview_forecast_maker_daily_pnl(client):
+    """Forecast Maker gets P&L from daily_pnl table, not trades."""
+    resp = await client.get("/api/overview")
+    bots = {b["id"]: b for b in resp.json()["bots"]}
+    fm = bots["forecast_maker"]
+    assert fm["asset_class"] == "predictions"
+    # Equity = sum of all daily_pnl total_pnl: 17.00 + 7.50 = 24.50
+    assert fm["equity"] == 24.50
+    # Today's P&L from daily_pnl
+    assert fm["today_pnl"] == 17.00
+    assert fm["open_positions"] == 1  # 1 inventory row
+    assert fm["status"] == "running"  # from bot_state
 
 
 @pytest.mark.asyncio

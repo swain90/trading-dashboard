@@ -9,7 +9,7 @@ async def test_health_returns_all_bots(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
-    assert len(data["bots"]) == 3
+    assert len(data["bots"]) == 4
 
 
 @pytest.mark.asyncio
@@ -25,5 +25,15 @@ async def test_health_db_connected(client):
     resp = await client.get("/api/health", headers={})
     bots = {b["id"]: b for b in resp.json()["bots"]}
     # All 3 test DBs should be connected
-    for bot_id in ["whale_watcher", "commodity_hunter", "crypto"]:
+    for bot_id in ["whale_watcher", "commodity_hunter", "crypto", "forecast_maker"]:
         assert bots[bot_id]["db_connected"] is True
+
+
+@pytest.mark.asyncio
+async def test_health_forecast_maker_status_from_bot_state(client):
+    """Forecast Maker gets status from bot_state table."""
+    resp = await client.get("/api/health", headers={})
+    bots = {b["id"]: b for b in resp.json()["bots"]}
+    fm = bots["forecast_maker"]
+    assert fm["status"] == "running"
+    assert fm["db_connected"] is True
