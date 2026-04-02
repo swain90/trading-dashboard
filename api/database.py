@@ -205,5 +205,5 @@ async def bot_state_status(bot_id: str) -> str:
         "SELECT value FROM bot_state WHERE key = 'status'",
     )
     if row and row["value"]:
-        return row["value"]
+        return row["value"].lower()
     return "stopped"

@@ -74,8 +74,11 @@ async def get_overview() -> OverviewResponse:
             today_pnl = closed_pnl + unrealized
 
         # Open positions count
+        pos_filter = ""
+        if db.has_col(bot_id, pos_table, "status"):
+            pos_filter = "WHERE status = 'open'"
         row = await db.fetch_one(
-            bot_id, f"SELECT COUNT(*) as cnt FROM {pos_table}",
+            bot_id, f"SELECT COUNT(*) as cnt FROM {pos_table} {pos_filter}",
         )
         open_pos = row["cnt"] if row else 0
 

@@ -32,8 +32,11 @@ async def get_health() -> HealthResponse:
             )
             last_signal = row["created_at"] if row else None
 
+            pos_filter = ""
+            if db.has_col(bot_id, pos_table, "status"):
+                pos_filter = "WHERE status = 'open'"
             row = await db.fetch_one(
-                bot_id, f"SELECT COUNT(*) as cnt FROM {pos_table}",
+                bot_id, f"SELECT COUNT(*) as cnt FROM {pos_table} {pos_filter}",
             )
             open_positions = row["cnt"] if row else 0
 

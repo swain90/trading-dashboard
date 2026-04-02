@@ -31,11 +31,15 @@ async def get_positions(
         tp = db.col(bot_id, table, "take_profit")
         opened = db.col(bot_id, table, "opened_at")
 
+        status_filter = ""
+        if db.has_col(bot_id, table, "status"):
+            status_filter = "WHERE status = 'open'"
+
         rows = await db.fetch_all(
             bot_id,
             f"SELECT id, {sym}, side, {sz}, {ep}, "
             f"{cp}, {urpnl}, {sl}, {tp}, {opened} "
-            f"FROM {table} ORDER BY "
+            f"FROM {table} {status_filter} ORDER BY "
             f"{db.raw_col(bot_id, table, 'opened_at') or 'id'} DESC",
         )
 
