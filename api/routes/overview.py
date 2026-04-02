@@ -19,6 +19,35 @@ async def get_overview() -> OverviewResponse:
         sig_table = cfg.table("signals")
         pos_table = cfg.table("positions")
 
+        # --- Equity: prefer daily_performance.ending_equity if available ---
+        equity = 0.0
+        if db.has_table(bot_id, "daily_performance"):
+            row = await db.fetch_one(
+                bot_id,
+                "SELECT ending_equity FROM daily_performance "
+                "ORDER BY date DESC LIMIT 1",
+            )
+            if row and row["ending_equity"] is not None:
+                equity = row["ending_equity"]
+
+        if equity == 0.0 and db.has_table(bot_id, "daily_pnl"):
+            # Forecast Maker: equity from cumulative daily_pnl
+            row = await db.fetch_one(
+                bot_id,
+                "SELECT COALESCE(SUM(total_pnl), 0) as equity FROM daily_pnl",
+            )
+            equity = row["equity"] if row else 0.0
+
+        if equity == 0.0 and not db.has_table(bot_id, "daily_performance") and not db.has_table(bot_id, "daily_pnl"):
+            # Fallback: sum all-time trade P&L
+            row = await db.fetch_one(
+                bot_id,
+                "SELECT COALESCE(SUM(pnl), 0) as equity "
+                "FROM trades WHERE pnl IS NOT NULL",
+            )
+            equity = row["equity"] if row else 0.0
+
+        # --- Today P&L ---
         if db.has_table(bot_id, "daily_pnl"):
             # Forecast Maker: P&L from daily_pnl table
             row = await db.fetch_one(
@@ -27,12 +56,6 @@ async def get_overview() -> OverviewResponse:
                 "FROM daily_pnl WHERE date = date('now')",
             )
             today_pnl = row["today_pnl"] if row else 0.0
-
-            row = await db.fetch_one(
-                bot_id,
-                "SELECT COALESCE(SUM(total_pnl), 0) as equity FROM daily_pnl",
-            )
-            equity = row["equity"] if row else 0.0
         else:
             # Standard bots: P&L from trades + positions
             row = await db.fetch_one(
@@ -49,13 +72,6 @@ async def get_overview() -> OverviewResponse:
             unrealized = row["urpnl"] if row else 0.0
 
             today_pnl = closed_pnl + unrealized
-
-            row = await db.fetch_one(
-                bot_id,
-                "SELECT COALESCE(SUM(pnl), 0) as equity "
-                "FROM trades WHERE pnl IS NOT NULL",
-            )
-            equity = row["equity"] if row else 0.0
 
         # Open positions count
         row = await db.fetch_one(
