@@ -2,6 +2,8 @@
 
 import pytest
 
+from config import settings
+
 
 @pytest.mark.asyncio
 async def test_overview_returns_all_bots(client):
@@ -10,7 +12,7 @@ async def test_overview_returns_all_bots(client):
     data = resp.json()
     assert "combined" in data
     assert "bots" in data
-    assert len(data["bots"]) == 4
+    assert len(data["bots"]) == len(settings.bots)
 
 
 @pytest.mark.asyncio

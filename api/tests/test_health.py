@@ -2,6 +2,8 @@
 
 import pytest
 
+from config import settings
+
 
 @pytest.mark.asyncio
 async def test_health_returns_all_bots(client):
@@ -9,7 +11,7 @@ async def test_health_returns_all_bots(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
-    assert len(data["bots"]) == 4
+    assert len(data["bots"]) == len(settings.bots)
 
 
 @pytest.mark.asyncio
@@ -25,7 +27,7 @@ async def test_health_db_connected(client):
     resp = await client.get("/api/health", headers={})
     bots = {b["id"]: b for b in resp.json()["bots"]}
     # All 3 test DBs should be connected
-    for bot_id in ["whale_watcher", "commodity_hunter", "crypto", "forecast_maker"]:
+    for bot_id in settings.bots:
         assert bots[bot_id]["db_connected"] is True
 
 

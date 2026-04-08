@@ -67,6 +67,12 @@ class Settings:
                         ("positions", "inventory"),
                     ),
                 ),
+                "currency_compass": BotConfig(
+                    name="Currency Compass",
+                    db_path=os.getenv("CC_DB_PATH", "/data/cc/currency_compass.db"),
+                    asset_class="fx",
+                    ticker_field="symbol",
+                ),
             },
         )
 

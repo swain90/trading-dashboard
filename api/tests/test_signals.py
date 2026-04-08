@@ -8,8 +8,8 @@ async def test_signals_returns_recent(client):
     resp = await client.get("/api/signals")
     assert resp.status_code == 200
     data = resp.json()
-    # WW: 2 signals, CH: 1, Crypto: 2, FM: 3 quotes = 8 total
-    assert data["count"] == 8
+    # WW: 2 signals, CH: 1, Crypto: 2, FM: 3 quotes, CC: 1 = 9 total
+    assert data["count"] == 9
 
 
 @pytest.mark.asyncio

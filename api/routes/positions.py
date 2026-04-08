@@ -34,6 +34,9 @@ async def get_positions(
         status_filter = ""
         if db.has_col(bot_id, table, "status"):
             status_filter = "WHERE status = 'open'"
+        elif db.has_col(bot_id, table, "size"):
+            size_col = db.raw_col(bot_id, table, "size")
+            status_filter = f"WHERE {size_col} > 0"
 
         rows = await db.fetch_all(
             bot_id,

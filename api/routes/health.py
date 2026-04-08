@@ -35,6 +35,9 @@ async def get_health() -> HealthResponse:
             pos_filter = ""
             if db.has_col(bot_id, pos_table, "status"):
                 pos_filter = "WHERE status = 'open'"
+            elif db.has_col(bot_id, pos_table, "size"):
+                size_col = db.raw_col(bot_id, pos_table, "size")
+                pos_filter = f"WHERE {size_col} > 0"
             row = await db.fetch_one(
                 bot_id, f"SELECT COUNT(*) as cnt FROM {pos_table} {pos_filter}",
             )

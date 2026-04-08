@@ -323,7 +323,26 @@ def tmp_dbs(tmp_path):
         },
     )
 
-    return {"ww": ww_path, "ch": ch_path, "crypto": crypto_path, "fm": fm_path}
+    # Currency Compass — uses "symbol" and "signal_type", same schema as CH
+    cc_path = str(tmp_path / "currency_compass.db")
+    _create_db(
+        cc_path,
+        "symbol",
+        {
+            "signals": [
+                ("EUR/USD", "LONG", 0.82, "macro_model", TODAY),
+            ],
+            "trades": [
+                ("EUR/USD", "BUY", 10000, 1.0850, 1.0875, 25.00, YESTERDAY, TODAY),
+            ],
+            "positions": [
+                ("GBP/USD", "LONG", 5000, 1.2650, 1.2680, 15.00, 1.2600, 1.2750, TODAY),
+            ],
+        },
+        signals_ddl=SCHEMA_SIGNALS_CH,
+    )
+
+    return {"ww": ww_path, "ch": ch_path, "crypto": crypto_path, "fm": fm_path, "cc": cc_path}
 
 
 @pytest.fixture()
@@ -333,6 +352,7 @@ def _configure_env(tmp_dbs):
     os.environ["CH_DB_PATH"] = tmp_dbs["ch"]
     os.environ["CRYPTO_DB_PATH"] = tmp_dbs["crypto"]
     os.environ["FM_DB_PATH"] = tmp_dbs["fm"]
+    os.environ["CC_DB_PATH"] = tmp_dbs["cc"]
     os.environ["DASHBOARD_API_KEY"] = "test-key-123"
     os.environ["CORS_ORIGINS"] = "http://localhost:5173"
 
@@ -352,6 +372,7 @@ def _configure_env(tmp_dbs):
     os.environ.pop("CH_DB_PATH", None)
     os.environ.pop("CRYPTO_DB_PATH", None)
     os.environ.pop("FM_DB_PATH", None)
+    os.environ.pop("CC_DB_PATH", None)
     os.environ.pop("DASHBOARD_API_KEY", None)
 
 

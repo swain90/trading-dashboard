@@ -2,6 +2,8 @@ export const BOT_COLORS = {
   whale_watcher: { bg: "bg-bot-ww/20", text: "text-bot-ww", dot: "bg-bot-ww" },
   commodity_hunter: { bg: "bg-bot-ch/20", text: "text-bot-ch", dot: "bg-bot-ch" },
   crypto: { bg: "bg-bot-crypto/20", text: "text-bot-crypto", dot: "bg-bot-crypto" },
+  forecast_maker: { bg: "bg-bot-fm/20", text: "text-bot-fm", dot: "bg-bot-fm" },
+  currency_compass: { bg: "bg-bot-cc/20", text: "text-bot-cc", dot: "bg-bot-cc" },
 };
 
 export function botBadge(botId, botName) {

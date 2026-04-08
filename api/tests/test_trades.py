@@ -8,18 +8,18 @@ async def test_trades_returns_recent(client):
     resp = await client.get("/api/trades?days=7")
     assert resp.status_code == 200
     data = resp.json()
-    # WW: 1 closed today, CH: 1 closed today, Crypto: 1 closed today, FM: 1 filled today = 4
-    # WW old trade is 30 days ago, outside 7-day window; FM fill from yesterday also in window = 5
-    assert data["count"] == 5
+    # WW: 1 closed today, CH: 1 closed today, Crypto: 1 closed today, FM: 1 filled today, CC: 1 closed today = 5
+    # WW old trade is 30 days ago, outside 7-day window; FM fill from yesterday also in window = 6
+    assert data["count"] == 6
 
 
 @pytest.mark.asyncio
 async def test_trades_stats(client):
     resp = await client.get("/api/trades?days=7")
     stats = resp.json()["stats"]
-    # FM fills have no pnl field (NULL), so only 3 trades with pnl data
-    assert stats["total_trades"] == 3
-    assert stats["wins"] == 3
+    # FM fills have no pnl field (NULL), so only 4 trades with pnl data (WW, CH, Crypto, CC)
+    assert stats["total_trades"] == 4
+    assert stats["wins"] == 4
     assert stats["win_rate"] == 100.0
     assert stats["total_pnl"] > 0
 

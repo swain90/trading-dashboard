@@ -8,9 +8,9 @@ async def test_positions_returns_all(client):
     resp = await client.get("/api/positions")
     assert resp.status_code == 200
     data = resp.json()
-    # WW has 1 position, CH has 1, Crypto has 0, FM has 1 = 3 total
-    assert data["count"] == 3
-    assert len(data["positions"]) == 3
+    # WW has 1 position, CH has 1, Crypto has 0, FM has 1, CC has 1 = 4 total
+    assert data["count"] == 4
+    assert len(data["positions"]) == 4
 
 
 @pytest.mark.asyncio
@@ -19,7 +19,7 @@ async def test_positions_tagged_with_bot(client):
     for pos in resp.json()["positions"]:
         assert "bot_id" in pos
         assert "bot_name" in pos
-        assert pos["bot_id"] in ["whale_watcher", "commodity_hunter", "crypto", "forecast_maker"]
+        assert pos["bot_id"] in ["whale_watcher", "commodity_hunter", "crypto", "forecast_maker", "currency_compass"]
 
 
 @pytest.mark.asyncio

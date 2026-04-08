@@ -81,6 +81,7 @@ Bots use SQLAlchemy 2.0 with varying schemas. The API normalizes all to a unifie
 | Commodity Hunter | /data/ch/commodity.db | signals (symbol) | trades | positions |
 | Crypto | /data/crypto/crypto.db | signals (symbol) | trades | positions |
 | Forecast Maker | /data/fm/forecast_maker.db | quotes (symbol, side) | fills (filled_at) | inventory (quantity, avg_cost) |
+| Currency Compass | /data/cc/currency_compass.db | signals (symbol) | trades | positions |
 
 Note: WW uses "ticker", others use "symbol". FM has a completely different schema:
 - quotes→signals, fills→trades, inventory→positions (table_map in BotConfig)
