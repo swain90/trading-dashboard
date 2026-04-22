@@ -1,4 +1,4 @@
-const API_URL = 'https://jazz-estimate-his-issue.trycloudflare.com';
+const API_URL = 'https://compliance-functionality-eclipse-montgomery.trycloudflare.com';
 const API_KEY = import.meta.env.VITE_API_KEY || "";
 
 async function request(path, params = {}) {
