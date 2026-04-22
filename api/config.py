@@ -73,6 +73,12 @@ class Settings:
                     asset_class="fx",
                     ticker_field="symbol",
                 ),
+                "delta_hedger": BotConfig(
+                    name="Delta Hedger",
+                    db_path=os.getenv("DH_DB_PATH", "/data/dh/delta_hedger.db"),
+                    asset_class="crypto",
+                    ticker_field="asset",
+                ),
             },
         )
 

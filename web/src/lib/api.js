@@ -1,4 +1,4 @@
-const API_URL = 'https://types-rose-gains-eyed.trycloudflare.com';
+const API_URL = 'https://shipped-library-basement-supreme.trycloudflare.com';
 const API_KEY = import.meta.env.VITE_API_KEY || "";
 
 async function request(path, params = {}) {

@@ -13,6 +13,7 @@ services:
       - /opt/whale-watcher-crypto/data:/data/crypto:ro
       - forecast-maker_forecast-data:/data/fm:ro
       - currency-compass_currency-data:/data/cc:ro
+      - delta-hedger_data:/data/dh:ro
 # Crypto bot — update volume name to match your crypto docker setup
     environment:
       DASHBOARD_API_KEY: ${DASHBOARD_API_KEY}
@@ -23,6 +24,7 @@ services:
       CORS_ORIGINS: "*"
       FM_DB_PATH: /data/fm/forecast_maker.db
       CC_DB_PATH: /data/cc/currency_compass.db
+      DH_DB_PATH: /data/dh/delta_hedger.db
     deploy:
       resources:
         limits:
@@ -39,6 +41,8 @@ volumes:
   forecast-maker_forecast-data:
     external: true
   currency-compass_currency-data:
+    external: true
+  delta-hedger_data:
     external: true
 networks:
   whale-watcher_default:
