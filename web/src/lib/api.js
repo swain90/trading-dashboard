@@ -24,3 +24,4 @@ export const api = {
   trades: (days = 7, bot) => request("/api/trades", { days, bot }),
   health: () => request("/api/health"),
 };
+
