@@ -1,4 +1,4 @@
-const API_URL = 'http://167.99.176.5:8090';
+const API_URL = 'https://shans-trading-dashboard.xyz';
 const API_KEY = import.meta.env.VITE_API_KEY || "";
 
 async function request(path, params = {}) {
