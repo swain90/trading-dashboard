@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - "127.0.0.1:8090:8090"
+      - "0.0.0.0:8090:8090"
     volumes:
       # Mount all 3 bot databases read-only
       - whale-watcher_trading-data:/data/ww:ro
