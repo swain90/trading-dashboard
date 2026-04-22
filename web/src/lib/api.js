@@ -1,5 +1,5 @@
 const API_URL = 'https://shans-trading-dashboard.xyz';
-const API_KEY = import.meta.env.VITE_API_KEY || "";
+const API_KEY = import.meta.env.VITE_API_KEY || "5bc9c2e178fb4560bde0d2ca818d0816bd9976ae03337bb5ce6a6b1b778eafda";
 
 async function request(path, params = {}) {
   const url = new URL(`${API_URL}${path}`);
