@@ -42,7 +42,7 @@ export default function App() {
             Trading Command Center
           </h1>
           <p className="text-sm text-gray-500">
-            {data?.bots?.length || 0} bots &middot; unified view
+            {overview.data?.bots?.length || 0} bots &middot; unified view
           </p>
         </div>
         <div className="flex items-center gap-3">
